@@ -12,10 +12,6 @@ const tokenSchema = new mongoose.Schema(
       ref: "Subscription",
       required: true,
     },
-    isRecurring: {
-      type: Boolean,
-      default: false,
-    },
     apiToken: {
       type: String,
       required: true,

@@ -3,18 +3,18 @@ import {
   createToken,
   deleteToken,
   getAllTokens,
-  postWpListing,
+  // postWpListing,
   verifyToken,
 } from "../controllers/token.js";
 import { isAuth } from "../middlewares/isAuthorized.js";
 
 const router = express.Router();
 
-router.post ("/create", isAuth, createToken);
+router.post("/create", isAuth, createToken);
 
 router.delete("/:tokenId", isAuth, deleteToken);
 
-router.post("/wp/create/listing", postWpListing);
+// router.post("/wp/create/listing", postWpListing);
 
 router.get("/all", isAuth, getAllTokens);
 

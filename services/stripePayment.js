@@ -10,16 +10,23 @@ const stripePayment = async (
   customerId
 ) => {
   try {
-    let amount = 0;
+    let amount;
     if (plan === "basic") {
-      amount = 3900;
+      amount = 3900; // Amount in cents
     } else if (plan === "advance") {
-      amount = 9900;
+      amount = 9900; // Amount in cents
     } else {
       return { success: false, message: "Invalid subscription plan!" };
     }
 
     if (isRecurring) {
+      if (!customerId) {
+        return {
+          success: false,
+          message: "Customer ID is required for subscriptions.",
+        };
+      }
+
       const subscription = await stripeClient.subscriptions.create({
         customer: customerId,
         items: [
@@ -48,8 +55,9 @@ const stripePayment = async (
         amount,
         currency: "usd",
         payment_method: paymentMethodId,
+        customer: customerId, // Include customer if paymentMethodId belongs to a customer
         confirm: true,
-        return_url: `${process.env.FRONTEND_URl}/dashboard}`,
+        return_url: `${process.env.FRONTEND_URL}/dashboard`,
       });
 
       return {

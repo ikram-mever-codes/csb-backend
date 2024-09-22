@@ -3,20 +3,35 @@ import Token from "../models/tokenModel.js";
 import User from "../models/userModel.js";
 import errorHandler from "../utils/errorHandler.js";
 import crypto from "crypto";
-import bcrypt from "bcryptjs";
 import fetch from "node-fetch";
-
 export const createToken = async (req, res, next) => {
   try {
     const { type, wordpressUrl } = req.body;
     const subscriptionId = req.user?.subscription?.id;
+
+    const validWordpressUrlRegex =
+      /^(https?:\/\/)?([a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+)$/;
 
     if (!subscriptionId) {
       return next(new errorHandler("Please subscribe to a membership!", 400));
     }
 
     if (!type || (type === "wordpress" && !wordpressUrl)) {
-      return next(new errorHandler("Incomplete credentials!", 400));
+      return next(
+        new errorHandler(
+          "Incomplete credentials! WordPress URL is required for WordPress type.",
+          400
+        )
+      );
+    }
+
+    if (type === "wordpress" && !validWordpressUrlRegex.test(wordpressUrl)) {
+      return next(
+        new errorHandler(
+          "Invalid WordPress URL! Please provide a valid domain (e.g., https://example.com) without any additional path.",
+          400
+        )
+      );
     }
 
     const user = await User.findById(req.user._id);
@@ -46,11 +61,12 @@ export const createToken = async (req, res, next) => {
       );
     }
 
-    if (subscription.plan === "premium" && tokens.length >= 3) {
+    if (subscription.plan === "advance" && tokens.length >= 3) {
       return next(new errorHandler("API token limit reached!", 400));
     }
 
-    if (type === "wordpress" && subscription.plan !== "premium") {
+    // WordPress type requires 'advance' plan
+    if (type === "wordpress" && subscription.plan !== "advance") {
       return next(
         new errorHandler(
           "You need a premium plan for WordPress automation.",
@@ -182,55 +198,64 @@ export const verifyToken = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       userId: token.userId,
-      meessage: "Api Token Verified Successfully!",
+      message: "Api Token Verified Successfully!",
+      ...(type === "wordpress" && { wpUrl: token.wordpressUrl }),
     });
   } catch (error) {
     return next(error);
   }
 };
 
-export const postWpListing = async (req, res, next) => {
-  try {
-    const body = req.body;
+// export const postWpListing = async (req, res, next) => {
+//   try {
+//     const body = req.body;
 
-    if (
-      !body.title ||
-      !body.make ||
-      !body.model ||
-      !body.year ||
-      !body.description ||
-      !body.gallery
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Incomplete Info! Please make sure all important infromation is scraped",
-      });
-    }
+//     if (
+//       !body.title ||
+//       !body.make ||
+//       !body.model ||
+//       !body.year ||
+//       !body.description ||
+//       !body.gallery ||
+//       !!body.token
+//     ) {
+//       return res.status(400).json({
+//         success: false,
+//         message:
+//           "Incomplete Info! Please make sure all important infromation is scraped",
+//       });
+//     }
+//     let token = await Token.findOne({ apiToken: body.token });
+//     if (token.type !== "wordpress") {
+//       return res.status(400).json({
+//         message: "Invalid Token",
+//         success: false,
+//       });
+//     }
 
-    const response = await fetch(
-      `http://localhost/wordpress/wp-json/csb/v1/create-listing`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    const data = await response.json();
-    console.log(data);
-    if (!data.success) {
-      return res.status(400).json({
-        sucess: false,
-        message: data.message || "Unexpected Error",
-      });
-    }
-    return res.status(201).json({
-      success: true,
-      message: "Listing Posted to WordPress Successfully!",
-    });
-  } catch (error) {
-    return next(error);
-  }
-};
+//     const response = await fetch(
+//       `${token.wordpressUrl}/wordpress/wp-json/csb/v1/create-listing`,
+//       {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         body: JSON.stringify(body),
+//       }
+//     );
+//     const data = await response.json();
+//     console.log(data);
+//     if (!data.success) {
+//       return res.status(400).json({
+//         sucess: false,
+//         message: data.message || "Unexpected Error",
+//       });
+//     }
+//     return res.status(201).json({
+//       success: true,
+//       message: "Listing Posted to WordPress Successfully!",
+//     });
+//   } catch (error) {
+//     return next(error);
+//   }
+// };

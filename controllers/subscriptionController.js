@@ -6,10 +6,11 @@ import User from "../models/userModel.js";
 import stripePayment from "../services/stripePayment.js";
 import errorHandler from "../utils/errorHandler.js";
 import Invoice from "../models/invoiceModel.js";
-
+import stripe from "stripe";
+const stripeClient = stripe(process.env.STRIPE_SECRET_KEY);
 export const buySubscription = async (req, res, next) => {
   try {
-    const { paymentMethodId, plan, isRecurring, price } = req.body;
+    const { paymentMethodId, plan, isRecurring } = req.body;
     if (!paymentMethodId || !plan) {
       return next(
         new errorHandler("Payment Method and Plan are required!", 400)
@@ -38,7 +39,18 @@ export const buySubscription = async (req, res, next) => {
       }
     }
 
-    const payment = await stripePayment(paymentMethodId, plan, isRecurring);
+    const customer = await stripeClient.customers.create({
+      email: user.email,
+      name: `${user.firstName} ${user.lastName}`,
+      payment_method: paymentMethodId,
+    });
+
+    const payment = await stripePayment(
+      paymentMethodId,
+      plan,
+      isRecurring,
+      customer.id
+    );
     if (!payment.success) {
       return next(new errorHandler("Payment failed: " + payment.message, 402));
     }
@@ -46,6 +58,7 @@ export const buySubscription = async (req, res, next) => {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setMonth(startDate.getMonth() + 1);
+
     if (!subscription) {
       subscription = new Subscription({
         userId: user._id,
@@ -74,10 +87,11 @@ export const buySubscription = async (req, res, next) => {
       status: "active",
     };
     await user.save();
-    const __uploads_dirname = path.resolve();
+
+    const dirname = path.resolve();
 
     const pdfPath = path.join(
-      `${__uploads_dirname}/pdfs`,
+      `${dirname}/pdfs`,
       `invoice_${subscription._id}.pdf`
     );
     const doc = new PDFDocument();
@@ -88,20 +102,19 @@ export const buySubscription = async (req, res, next) => {
     doc.text(`Subscription Plan: ${plan}`);
     doc.text(`Start Date: ${startDate.toDateString()}`);
     doc.text(`End Date: ${endDate.toDateString()}`);
-    doc.text(`Total Amount: $${price || "N/A"}`);
+    doc.text(`Total Amount: $${plan === "basic" ? 39.99 : 99.99}`);
     doc.end();
 
     const invoice = new Invoice({
       customer: {
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
-        avatar: user.avatar,
       },
       invoice_date: new Date(),
       plan,
       due_date: endDate,
       status: "open",
-      total_amount: price,
+      total_amount: plan === "basic" ? 39.99 : 99.99,
       pdf_url: `/pdfs/invoice_${subscription._id}.pdf`,
       payment_status: "completed",
     });
