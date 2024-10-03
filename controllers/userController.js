@@ -225,6 +225,16 @@ export const logout = (req, res, next) => {
       .status(200)
       .clearCookie("token", {
         httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      })
+      .clearCookie("__clerk_db_jwt", {
+        httpOnly: true,
+        secure: false,
+        sameSite: "none",
+      })
+      .clearCookie("__session", {
+        httpOnly: true,
         secure: false,
         sameSite: "none",
       })
