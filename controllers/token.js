@@ -169,10 +169,10 @@ export const verifyToken = async (req, res, next) => {
         message: "Invalid Token! Please Try Again.",
       });
     }
-    if (token.type !== type) {
+    if (type === "wordpress" && token.type !== "wordpress") {
       return res.status(400).json({
         success: false,
-        message: `The Api Token does not have Type: ${type}! Please create a token with this type.`,
+        message: `Please Upgrade your plan for Wordpress Automation`,
       });
     }
 

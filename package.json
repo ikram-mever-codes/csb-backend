@@ -15,6 +15,8 @@
   "author": "IKRAM KHAN",
   "license": "ISC",
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^5.0.48",
+    "@clerk/express": "^1.2.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
     "cloudinary": "^2.4.0",

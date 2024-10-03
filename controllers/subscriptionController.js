@@ -45,16 +45,24 @@ export const buySubscription = async (req, res, next) => {
       payment_method: paymentMethodId,
     });
 
+    const dirname = path.resolve();
+
+    const pdfPath = path.join(
+      `${dirname}/pdfs`,
+      `invoice_${user._id}.pdf`
+    );
+
     const payment = await stripePayment(
       paymentMethodId,
       plan,
       isRecurring,
-      customer.id
+      customer.id,
+      pdfPath
     );
     if (!payment.success) {
       return next(new errorHandler("Payment failed: " + payment.message, 402));
     }
-
+    console.log(pdfPath);
     const startDate = new Date();
     const endDate = new Date();
     endDate.setMonth(startDate.getMonth() + 1);
@@ -88,12 +96,6 @@ export const buySubscription = async (req, res, next) => {
     };
     await user.save();
 
-    const dirname = path.resolve();
-
-    const pdfPath = path.join(
-      `${dirname}/pdfs`,
-      `invoice_${subscription._id}.pdf`
-    );
     const doc = new PDFDocument();
     doc.pipe(fs.createWriteStream(pdfPath));
     doc.fontSize(12).text(`Invoice for Subscription Plan: ${plan}`);

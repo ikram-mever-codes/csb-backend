@@ -39,7 +39,7 @@ router.get("/logout", isAuth, logout);
 
 // Refresh Route for User Details
 
-router.get("/refresh", isAuth, refresh);
+router.get("/refresh", refresh);
 
 // Edit Profile Route for Users
 

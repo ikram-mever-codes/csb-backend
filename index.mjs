@@ -13,6 +13,7 @@ import cors from "cors";
 import path from "path";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
+import { clerkMiddleware } from "@clerk/express";
 
 import Subscription from "./models/subscriptionModel.js";
 import User from "./models/userModel.js";
@@ -37,6 +38,8 @@ const corsOptions = {
   credentials: true,
 };
 
+// Define your routes here
+
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
@@ -46,6 +49,15 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.raw({ type: "application/json" }));
 
+app.use(
+  clerkMiddleware(
+    {
+      apiKey: process.env.CLERK_API_KEY,
+      domain: process.env.CLERK_FRONTEND_API,
+    },
+    { debug: true }
+  )
+);
 const __uploads_dirname = path.resolve();
 
 app.use("/pdfs", express.static(path.join(__uploads_dirname, "/pdfs")));

@@ -12,9 +12,9 @@ const stripePayment = async (
   try {
     let amount;
     if (plan === "basic") {
-      amount = 3900; // Amount in cents
+      amount = process.env.BAIC_PRICE;
     } else if (plan === "advance") {
-      amount = 9900; // Amount in cents
+      amount = process.env.ADVANCE_PRICE;
     } else {
       return { success: false, message: "Invalid subscription plan!" };
     }
@@ -55,9 +55,9 @@ const stripePayment = async (
         amount,
         currency: "usd",
         payment_method: paymentMethodId,
-        customer: customerId, // Include customer if paymentMethodId belongs to a customer
+        customer: customerId,
         confirm: true,
-        return_url: `${process.env.FRONTEND_URL}/dashboard`,
+        return_url: `${process.env.FRONTEND_URL}/payment-success`,
       });
 
       return {

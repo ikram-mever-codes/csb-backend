@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
-    password: { type: String, required: true, minlength: 6 },
+    password: { type: String, minlength: 6 },
     role: { type: String, default: "user", enum: ["user", "admin"] },
     subscription: {
       id: { type: mongoose.Schema.Types.ObjectId, ref: "Subscription" },

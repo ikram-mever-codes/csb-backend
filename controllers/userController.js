@@ -6,7 +6,9 @@ import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cloudinary from "../config/cloudinary.js";
 import dotenv from "dotenv";
+import { getAuth } from "@clerk/express";
 dotenv.config();
+
 // Sign Up Controller for Users
 
 export const signUp = async (req, res, next) => {
@@ -217,16 +219,14 @@ export const login = async (req, res, next) => {
 };
 
 // Logout Controller for Users
-
 export const logout = (req, res, next) => {
   try {
     return res
       .status(200)
-      .cookie("token", "", {
+      .clearCookie("token", {
         httpOnly: true,
-        secure: true,
-        sameSite: "strict",
-        expires: new Date(0),
+        secure: false,
+        sameSite: "none",
       })
       .json({
         message: "User Logged Out!",
@@ -236,35 +236,109 @@ export const logout = (req, res, next) => {
   }
 };
 
-// Refresh Controller for Users
-
 export const refresh = async (req, res, next) => {
-  let token = req.cookies.token;
-  if (!token) {
-    return next(new errorHandler("Session Expired! Please Login Again.", 400));
-  }
+  const token = req.cookies.token;
+  const clerkSessionId = req.cookies.__session;
+
   try {
-    let decoded = await jwt.verify(token, process.env.JWT_SECRET);
+    // First check for the token cookie
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id);
 
-    let user = await User.findById(decoded.id);
+      if (!user) {
+        return next(
+          new errorHandler("Invalid Token! Please Login Again.", 401)
+        );
+      }
 
-    if (!user) {
-      return next(new errorHandler("Invalid Token! Please Login Again.", 401));
+      if (!user.isVerified) {
+        return next(
+          new errorHandler("Invalid Token! Please Login Again.", 401)
+        );
+      }
+
+      // Refresh the JWT cookie
+      return res
+        .status(200)
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        })
+        .json({ user });
     }
-    if (user && !user.isVerified) {
-      return next(new errorHandler("Invalid Token! Please Login Again.", 401));
+
+    // If the token is not present, fall back to the Clerk session
+    if (clerkSessionId) {
+      const authData = await getAuth(req);
+
+      if (!authData || !authData.sessionId) {
+        return next(
+          new errorHandler("Session Expired! Please Login Again.", 400)
+        );
+      }
+
+      const userId = authData.userId;
+
+      if (!userId) {
+        return next(new errorHandler("Invalid Session! No userId found.", 401));
+      }
+
+      const userClerk = await fetch(
+        `https://api.clerk.dev/v1/users/${userId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!userClerk.ok) {
+        const errorResponse = await userClerk.json();
+        return next(
+          new errorHandler(`Clerk API error: ${errorResponse.message}`, 500)
+        );
+      }
+
+      const userData = await userClerk.json();
+      const userEmail = userData.email_addresses[0]?.email_address;
+
+      if (!userEmail) {
+        return next(new errorHandler("Invalid Session! No Email Found.", 401));
+      }
+
+      const user = await User.findOne({ email: userEmail });
+
+      if (!user) {
+        return next(
+          new errorHandler("Invalid Session! Please Login Again.", 401)
+        );
+      }
+
+      // Optionally, create a new token for the user if needed
+      const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
+
+      return res
+        .status(200)
+        .cookie("token", newToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        })
+        .json({ user });
     }
 
-    return res
-      .status(200)
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      })
-      .json({ user });
+    // If neither token nor Clerk session ID are available
+    return next(new errorHandler("Session Expired! Please Login Again.", 400));
   } catch (error) {
+    console.error(error);
     return next(error);
   }
 };
