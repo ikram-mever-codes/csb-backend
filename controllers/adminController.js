@@ -33,7 +33,7 @@ export const getSingleUserDetails = async (req, res, next) => {
 
     let apiTokens = await Token.find({ userId: id });
     let transactions = await Invoice.find({ "customer.email": user.email });
-
+    transactions = transactions.reverse();
     return res.status(200).json({
       user: { subscription, user, apiTokens, transactions },
     });
@@ -93,6 +93,15 @@ export const changeMembershipType = async (req, res, next) => {
       message: "User Subscription Type Changed Successfully!",
       status: 400,
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getUsersCount = async (req, res, next) => {
+  try {
+    let usersCount = await User.countDocuments({});
+    return res.status(200).json({ usersCount });
   } catch (error) {
     return next(error);
   }

@@ -17,6 +17,8 @@
   "dependencies": {
     "@clerk/clerk-sdk-node": "^5.0.48",
     "@clerk/express": "^1.2.1",
+    "@stripe/react-stripe-js": "^2.8.0",
+    "@stripe/stripe-js": "^4.4.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
     "cloudinary": "^2.4.0",
@@ -30,9 +32,7 @@
     "multer": "^1.4.5-lts.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.14",
-    "stripe": "^16.11.0",
-    "@stripe/react-stripe-js": "^2.8.0",
-    "@stripe/stripe-js": "^4.4.0",
-    "pdfkit": "^0.15.0"
+    "pdfkit": "^0.15.0",
+    "stripe": "^16.11.0"
   }
 }

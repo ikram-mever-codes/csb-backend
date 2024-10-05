@@ -47,10 +47,7 @@ export const buySubscription = async (req, res, next) => {
 
     const dirname = path.resolve();
 
-    const pdfPath = path.join(
-      `${dirname}/pdfs`,
-      `invoice_${user._id}.pdf`
-    );
+    const pdfPath = path.join(`${dirname}/pdfs`, `invoice_${user._id}.pdf`);
 
     const payment = await stripePayment(
       paymentMethodId,
@@ -111,6 +108,7 @@ export const buySubscription = async (req, res, next) => {
       customer: {
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
+        avatar: user.avatar,
       },
       invoice_date: new Date(),
       plan,
