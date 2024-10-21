@@ -8,9 +8,10 @@ import errorHandler from "../utils/errorHandler.js";
 import Invoice from "../models/invoiceModel.js";
 import stripe from "stripe";
 const stripeClient = stripe(process.env.STRIPE_SECRET_KEY);
+
 export const buySubscription = async (req, res, next) => {
   try {
-    const { paymentMethodId, plan, isRecurring } = req.body;
+    const { paymentMethodId, plan, isRecurring, duration } = req.body;
     if (!paymentMethodId || !plan) {
       return next(
         new errorHandler("Payment Method and Plan are required!", 400)
@@ -24,14 +25,6 @@ export const buySubscription = async (req, res, next) => {
 
     let subscription = await Subscription.findOne({ userId: user._id });
     if (subscription && subscription.status === "active") {
-      if (
-        (subscription.plan === "advance" && plan === "basic") ||
-        !["basic", "advance"].includes(plan)
-      ) {
-        return next(
-          new errorHandler("You cannot downgrade to a lower plan!", 402)
-        );
-      }
       if (subscription.plan === plan) {
         return next(
           new errorHandler(`You already have the ${plan} plan!`, 402)
@@ -46,23 +39,27 @@ export const buySubscription = async (req, res, next) => {
     });
 
     const dirname = path.resolve();
+    let date = new Date();
+    date = date.toISOString().replace(/[-T:.]/g, "");
 
-    const pdfPath = path.join(`${dirname}/pdfs`, `invoice_${user._id}.pdf`);
+    const pdfPath = path.join(
+      `${dirname}/pdfs`,
+      `invoice_${user._id}-${date}.pdf`
+    );
 
     const payment = await stripePayment(
       paymentMethodId,
       plan,
       isRecurring,
       customer.id,
-      pdfPath
+      duration
     );
     if (!payment.success) {
       return next(new errorHandler("Payment failed: " + payment.message, 402));
     }
-    console.log(pdfPath);
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setMonth(startDate.getMonth() + 1);
+    endDate.setMonth(startDate.getMonth() + duration);
 
     if (!subscription) {
       subscription = new Subscription({
@@ -101,7 +98,9 @@ export const buySubscription = async (req, res, next) => {
     doc.text(`Subscription Plan: ${plan}`);
     doc.text(`Start Date: ${startDate.toDateString()}`);
     doc.text(`End Date: ${endDate.toDateString()}`);
-    doc.text(`Total Amount: $${plan === "basic" ? 39.99 : 99.99}`);
+    doc.text(
+      `Total Amount: $${plan === "basic" ? 39.99 * duration : 99.99 * duration}`
+    );
     doc.end();
 
     const invoice = new Invoice({
@@ -114,8 +113,8 @@ export const buySubscription = async (req, res, next) => {
       plan,
       due_date: endDate,
       status: "open",
-      total_amount: plan === "basic" ? 39.99 : 99.99,
-      pdf_url: `/pdfs/invoice_${subscription._id}.pdf`,
+      total_amount: plan === "basic" ? 39.99 * duration : 99.99 * duration,
+      pdf_url: `/pdfs/invoice_${user._id}-${date}.pdf`,
       payment_status: "completed",
     });
 

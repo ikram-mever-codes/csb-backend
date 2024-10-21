@@ -25,14 +25,14 @@ export const createToken = async (req, res, next) => {
       );
     }
 
-    if (type === "wordpress" && !validWordpressUrlRegex.test(wordpressUrl)) {
-      return next(
-        new errorHandler(
-          "Invalid WordPress URL! Please provide a valid domain (e.g., https://example.com) without any additional path.",
-          400
-        )
-      );
-    }
+    // if (type === "wordpress" && !validWordpressUrlRegex.test(wordpressUrl)) {
+    //   return next(
+    //     new errorHandler(
+    //       "Invalid WordPress URL! Please provide a valid domain (e.g., https://example.com) without any additional path.",
+    //       400
+    //     )
+    //   );
+    // }
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -76,7 +76,7 @@ export const createToken = async (req, res, next) => {
     }
 
     const apiToken = crypto.randomUUID();
-
+    console.log("Working1");
     const token = new Token({
       userId: user._id,
       subscriptionId,
@@ -90,6 +90,7 @@ export const createToken = async (req, res, next) => {
         const response = await fetch(
           `${wordpressUrl}/wp-json/csb/v1/verify-plugin`
         );
+        console.log(response);
 
         if (!response.ok) {
           return next(

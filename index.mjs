@@ -24,21 +24,13 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 dotenv.config();
 
 const app = express();
-
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    callback(null, origin);
-  },
+  origin: ["*", "http://localhost:3000", "https://www.facebook.com"], // Allow all origins
   methods: "GET,POST,PUT,DELETE,OPTIONS",
   allowedHeaders: "Content-Type,Authorization",
+  "Access-Control-Allow-Origin": "http://localhost:3000",
   credentials: true,
 };
-
-// Define your routes here
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
@@ -58,10 +50,10 @@ app.use(
     { debug: true }
   )
 );
+
 const __uploads_dirname = path.resolve();
 
 app.use("/pdfs", express.static(path.join(__uploads_dirname, "/pdfs")));
-
 app.use("/uploads", express.static(path.join(__uploads_dirname, "/uploads")));
 
 app.use("/api/user", userRouter);
@@ -150,10 +142,8 @@ app.post(
   }
 );
 
-// Error Middleware for Error Handling
 app.use(errorMiddleware);
 
-// Endpoint to Fetch Image and Convert to Buffer
 app.get("/fetch-image", async (req, res) => {
   const imageUrl = req.query.url;
   try {
@@ -169,22 +159,18 @@ app.get("/fetch-image", async (req, res) => {
     res.set("Content-Type", "image/png");
     return res.send(buffer);
   } catch (error) {
-    console.error("Error fetching image:", error);
     res.status(500).send("Error fetching image");
   }
 });
 
-// 404 Not Found handler
 app.use("*", (req, res) => {
   res.status(404).json({
     message: "Resource Not Found!",
   });
 });
 
-// Connecting Database
 connectDb();
 
-// Uncaught Exception Handling
 process.on("uncaughtException", (err) => {
   console.error(`Uncaught Exception: ${err.message}`);
   process.exit(1);

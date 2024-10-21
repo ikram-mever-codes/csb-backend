@@ -7,18 +7,21 @@ const stripePayment = async (
   paymentMethodId,
   plan,
   isRecurring,
-  customerId
+  customerId,
+  duration
 ) => {
   try {
     let amount;
     if (plan === "basic") {
-      amount = process.env.BAIC_PRICE;
+      amount = process.env.BASIC_PRICE;
+      amount = Number(amount) * duration;
     } else if (plan === "advance") {
       amount = process.env.ADVANCE_PRICE;
+      amount = Number(amount) * duration;
     } else {
       return { success: false, message: "Invalid subscription plan!" };
     }
-
+    console.log(amount);
     if (isRecurring) {
       if (!customerId) {
         return {

@@ -191,7 +191,7 @@ export const login = async (req, res, next) => {
     if (user && !user.isVerified) {
       return next(new errorHandler("Invalid Email! Please Try Again.", 401));
     }
-    let passwordMatch = await bcryptjs.compare(password, user.password);
+    let passwordMatch = await bcryptjs.compare(password, user.password || "");
     if (!passwordMatch) {
       return next(
         new errorHandler("Incorrect Password! Please Try Again.", 401)
@@ -214,6 +214,7 @@ export const login = async (req, res, next) => {
         user,
       });
   } catch (error) {
+    console.log(error);
     return next(error);
   }
 };
