@@ -13,7 +13,6 @@ import cors from "cors";
 import path from "path";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
-import sharp from "sharp";
 import { clerkMiddleware } from "@clerk/express";
 
 import Subscription from "./models/subscriptionModel.js";
@@ -26,18 +25,20 @@ dotenv.config();
 
 const app = express();
 const corsOptions = {
-  origin: [
-    "*",
-    "http://localhost:3000",
-    "https://www.facebook.com",
-    "https://www.crainkia.com",
-  ],
+  origin: (origin, callback) => {
+    if (!origin) {
+      return callback(null, true);
+    }
+    callback(null, origin);
+  },
+  origin: ["*", "https://app.carsalesboost.com", "https://www.facebook.com"], // Allow all origins
   methods: "GET,POST,PUT,DELETE,OPTIONS",
   allowedHeaders: "Content-Type,Authorization",
-  "Access-Control-Allow-Origin": "http://localhost:3000",
+  "Access-Control-Allow-Origin": "https://app.carsalesboost.com",
   credentials: true,
 };
 
+// Define your routes here
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
@@ -56,7 +57,6 @@ app.use(
     { debug: true }
   )
 );
-
 const __uploads_dirname = path.resolve();
 
 app.use("/pdfs", express.static(path.join(__uploads_dirname, "/pdfs")));
@@ -148,11 +148,15 @@ app.post(
   }
 );
 
-// Endpoint to fetch, compress, and convert the image to Base64
+// Error Middleware for Error Handling
+app.use(errorMiddleware);
+
+// Endpoint to Fetch Image and Convert to Buffer
 app.get("/fetch-image", async (req, res) => {
   const imageUrl = req.query.url;
   try {
     const response = await fetch(imageUrl);
+
     if (!response.ok) {
       throw new Error("Failed to fetch image");
     }
@@ -160,32 +164,25 @@ app.get("/fetch-image", async (req, res) => {
     const imageBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(imageBuffer);
 
-    const compressedBuffer = await sharp(buffer)
-      .resize(800) // Resize the image to a width of 800px
-      .png({ quality: 80 }) // Compress and convert to PNG with 80% quality
-      .toBuffer();
-
-    const base64Image = compressedBuffer.toString("base64");
-
-    res.json({
-      message: "Image successfully fetched, compressed, and converted",
-      base64: `data:image/png;base64,${base64Image}`,
-    });
+    res.set("Content-Type", "image/png");
+    return res.send(buffer);
   } catch (error) {
+    console.error("Error fetching image:", error);
     res.status(500).send("Error fetching image");
   }
 });
 
-app.use(errorMiddleware);
-
+// 404 Not Found handler
 app.use("*", (req, res) => {
   res.status(404).json({
     message: "Resource Not Found!",
   });
 });
 
+// Connecting Database
 connectDb();
 
+// Uncaught Exception Handling
 process.on("uncaughtException", (err) => {
   console.error(`Uncaught Exception: ${err.message}`);
   process.exit(1);
