@@ -13,6 +13,7 @@ import cors from "cors";
 import path from "path";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
+import sharp from "sharp";
 import { clerkMiddleware } from "@clerk/express";
 
 import Subscription from "./models/subscriptionModel.js";
@@ -25,7 +26,12 @@ dotenv.config();
 
 const app = express();
 const corsOptions = {
-  origin: ["*", "http://localhost:3000", "https://www.facebook.com"], // Allow all origins
+  origin: [
+    "*",
+    "http://localhost:3000",
+    "https://www.facebook.com",
+    "https://www.crainkia.com",
+  ],
   methods: "GET,POST,PUT,DELETE,OPTIONS",
   allowedHeaders: "Content-Type,Authorization",
   "Access-Control-Allow-Origin": "http://localhost:3000",
@@ -142,13 +148,11 @@ app.post(
   }
 );
 
-app.use(errorMiddleware);
-
+// Endpoint to fetch, compress, and convert the image to Base64
 app.get("/fetch-image", async (req, res) => {
   const imageUrl = req.query.url;
   try {
     const response = await fetch(imageUrl);
-
     if (!response.ok) {
       throw new Error("Failed to fetch image");
     }
@@ -156,12 +160,23 @@ app.get("/fetch-image", async (req, res) => {
     const imageBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(imageBuffer);
 
-    res.set("Content-Type", "image/png");
-    return res.send(buffer);
+    const compressedBuffer = await sharp(buffer)
+      .resize(800) // Resize the image to a width of 800px
+      .png({ quality: 80 }) // Compress and convert to PNG with 80% quality
+      .toBuffer();
+
+    const base64Image = compressedBuffer.toString("base64");
+
+    res.json({
+      message: "Image successfully fetched, compressed, and converted",
+      base64: `data:image/png;base64,${base64Image}`,
+    });
   } catch (error) {
     res.status(500).send("Error fetching image");
   }
 });
+
+app.use(errorMiddleware);
 
 app.use("*", (req, res) => {
   res.status(404).json({
