@@ -9,6 +9,8 @@ import {
   editProfile,
   changePassword,
   resendCode,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/userController.js";
 import { isAuth } from "../middlewares/isAuthorized.js";
 const router = express.Router();
@@ -48,5 +50,8 @@ router.put("/edit-profile", isAuth, uploadSingleImage, editProfile);
 // User Route For Changing Account Password
 
 router.put("/change-password", isAuth, changePassword);
+
+router.put("/forget-password", forgotPassword);
+router.put("/reset-password", resetPassword);
 
 export default router;

@@ -1,9 +1,19 @@
 class ErrorHandler extends Error {
-  constructor(message, status) {
+  constructor(message, status = 500) {
     super(message);
+
     this.status = status;
-    this.name = "Custom ErrorHandler";
-    Error.captureStackTrace(this, this.constructor);
+    this.message = message;
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+
+  toJSON() {
+    return {
+      message: this.message,
+      status: this.status,
+    };
   }
 }
 

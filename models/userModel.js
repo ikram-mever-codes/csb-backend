@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema(
     firstName: { type: String, required: true, minlength: 3, maxlength: 25 },
     lastName: { type: String, required: true, maxlength: 30 },
     phoneNumber: { type: String, unique: true, sparse: true },
+
     avatar: { type: String },
     email: {
       type: String,
@@ -28,6 +29,8 @@ const userSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     verificationCode: { type: String },
     verificationCodeExpiration: { type: Date },
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Date },
   },
   { timestamps: true }
 );

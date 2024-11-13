@@ -7,6 +7,8 @@ import jwt from "jsonwebtoken";
 import cloudinary from "../config/cloudinary.js";
 import dotenv from "dotenv";
 import { getAuth } from "@clerk/express";
+import crypto from "crypto";
+
 dotenv.config();
 
 // Sign Up Controller for Users
@@ -252,7 +254,6 @@ export const refresh = async (req, res, next) => {
   const clerkSessionId = req.cookies.__session;
 
   try {
-    // First check for the token cookie
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.id);
@@ -420,6 +421,81 @@ export const changePassword = async (req, res, next) => {
     return res.status(200).json({ message: "Password changed successfully!" });
   } catch (error) {
     console.log(error);
+    return next(error);
+  }
+};
+
+export const forgotPassword = async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(new errorHandler("Email is required!", 400));
+  }
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return next(
+        new errorHandler("User with this email does not exist!", 404)
+      );
+    }
+
+    const forgetToken = crypto.randomBytes(32).toString("hex");
+
+    user.resetPasswordToken = forgetToken;
+    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
+    await user.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${forgetToken}`;
+
+    const emailOptions = {
+      from: "CSB <no-reply@carsalesboost.com>",
+      to: email,
+      subject: "Password Reset Request",
+      html: `<p>You requested a password reset. Click the link below to reset your password:</p>
+             <a href="${resetUrl}" target="_blank">Reset Password</a>
+             <p>If you did not request this, please ignore this email.</p>`,
+    };
+
+    await sendEmail(emailOptions);
+
+    return res.status(200).json({
+      message: `Password reset link sent to ${email}`,
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return next(new errorHandler("Token and new password are required!", 400));
+  }
+
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return next(new errorHandler("Invalid or expired reset token!", 400));
+    }
+
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
+
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Password has been successfully reset.",
+    });
+  } catch (error) {
     return next(error);
   }
 };
