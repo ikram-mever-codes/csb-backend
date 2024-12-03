@@ -21,7 +21,33 @@ const stripePayment = async (
     } else {
       return { success: false, message: "Invalid subscription plan!" };
     }
-    console.log(amount);
+
+    async function createOrGetProduct(plan) {
+      try {
+        // First, try to find an existing product
+        const existingProducts = await stripeClient.products.list({
+          limit: 1,
+          active: true,
+          created: { gte: 0 },
+          expand: ["data.default_price"],
+        });
+
+        // If a product exists, return its ID
+        if (existingProducts.data.length > 0) {
+          return existingProducts.data[0].id;
+        }
+
+        // If no product exists, create a new one
+        const product = await stripeClient.products.create({
+          name: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
+        });
+
+        return product.id;
+      } catch (error) {
+        console.error("Error creating/retrieving Stripe product:", error);
+        throw error;
+      }
+    }
     if (isRecurring) {
       if (!customerId) {
         return {
@@ -36,9 +62,8 @@ const stripePayment = async (
           {
             price_data: {
               currency: "usd",
-              product_data: {
-                name: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
-              },
+              product: await createOrGetProduct(plan),
+
               unit_amount: amount,
               recurring: { interval: "month" },
             },

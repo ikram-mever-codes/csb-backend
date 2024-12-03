@@ -31,10 +31,10 @@ const corsOptions = {
     }
     callback(null, origin);
   },
-  origin: ["*", "http://localhost:3000", "https://www.facebook.com"], // Allow all origins
+  origin: ["*", "https://api.carsalesboost.com", "https://www.facebook.com"],
   methods: "GET,POST,PUT,DELETE,OPTIONS",
   allowedHeaders: "Content-Type,Authorization",
-  "Access-Control-Allow-Origin": "http://localhost:3000",
+  "Access-Control-Allow-Origin": "https://api.carsalesboost.com",
   credentials: true,
 };
 
